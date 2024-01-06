@@ -1,5 +1,5 @@
 use std::net::{SocketAddr, UdpSocket};
-use tinydns::{build_query, TYPE_A};
+use tinydns::{build_query, DNSHeader, TYPE_A};
 
 fn main() {
     let query = build_query("www.example.com", TYPE_A);
@@ -19,6 +19,7 @@ fn main() {
             println!("Recv bytes {}", bytes_recv);
             println!("Addr {}", src_addr);
             println!("Recv {:x?}", &buf[..bytes_recv]);
+            println!("Header {:x?}", DNSHeader::parse(&buf));
         }
         Err(e) => {
             eprintln!("Error in receiving response! {}", e);

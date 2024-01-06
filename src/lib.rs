@@ -4,6 +4,7 @@ use std::vec::Vec;
 pub const TYPE_A: u16 = 1;
 const CLASS_IN: u16 = 1;
 
+#[derive(Debug)]
 pub struct DNSHeader {
     pub id: u16,
     pub flags: u16,
@@ -34,6 +35,17 @@ impl DNSHeader {
 
         return dns_header_bytes;
     }
+
+    pub fn parse(buf: &[u8]) -> DNSHeader {
+        return DNSHeader {
+            id: u16::from_be_bytes(buf[0..2].try_into().unwrap()),
+            flags: u16::from_be_bytes(buf[2..4].try_into().unwrap()),
+            num_questions: u16::from_be_bytes(buf[4..6].try_into().unwrap()),
+            num_answers: u16::from_be_bytes(buf[6..8].try_into().unwrap()),
+            num_authorities: u16::from_be_bytes(buf[8..10].try_into().unwrap()),
+            num_additionals: u16::from_be_bytes(buf[10..12].try_into().unwrap()),
+        };
+    }
 }
 
 pub struct DNSQuestion {
@@ -49,6 +61,14 @@ impl DNSQuestion {
         let class_bytes = self.class_.to_be_bytes().to_vec();
         return [name_bytes, type_bytes, class_bytes].concat();
     }
+}
+
+pub struct DNSRecord {
+    pub name: String,
+    pub type_: u16,
+    pub class_: u16,
+    pub ttl: u16,
+    pub data: Vec<u8>,
 }
 
 pub fn encode_dns_name(domain_name: &str) -> String {
