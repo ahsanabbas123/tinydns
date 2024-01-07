@@ -48,6 +48,7 @@ impl DNSHeader {
     }
 }
 
+#[derive(Debug)]
 pub struct DNSQuestion {
     pub name: String,
     pub type_: u16,
@@ -60,6 +61,26 @@ impl DNSQuestion {
         let type_bytes = self.type_.to_be_bytes().to_vec();
         let class_bytes = self.class_.to_be_bytes().to_vec();
         return [name_bytes, type_bytes, class_bytes].concat();
+    }
+
+    pub fn parse(buf: &[u8]) -> DNSQuestion {
+        let mut parts: Vec<String> = Vec::new();
+        let mut index: usize = 12;
+        let mut l: usize = buf[index].into();
+        while l != 0 {
+            index += 1;
+            let part: String = String::from_utf8((&buf[index..index + l]).to_vec()).unwrap();
+            index += l;
+            parts.push(part);
+            l = buf[index].into();
+        }
+        let name = parts.join(".");
+        index += 1;
+        return DNSQuestion {
+            name: name,
+            type_: u16::from_be_bytes(buf[index..index + 2].try_into().unwrap()),
+            class_: u16::from_be_bytes(buf[index + 2..index + 4].try_into().unwrap()),
+        };
     }
 }
 
