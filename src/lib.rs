@@ -87,6 +87,60 @@ impl DNSQuestion {
 }
 
 #[derive(Debug)]
+pub struct DNSPacket {
+    pub header: DNSHeader,
+    pub questions: Vec<DNSQuestion>,
+    pub answers: Vec<DNSRecord>,
+    pub authorities: Vec<DNSRecord>,
+    pub additionals: Vec<DNSRecord>,
+}
+
+impl DNSPacket {
+    pub fn parse(buf: &[u8]) -> DNSPacket {
+        let mut index: usize = 0;
+
+        let header: DNSHeader = DNSHeader::parse(&buf);
+        index += 12;
+
+        let mut questions: Vec<DNSQuestion> = Vec::new();
+        for _ in 0..header.num_questions {
+            let question: DNSQuestion;
+            (index, question) = DNSQuestion::parse(&buf, index);
+            questions.push(question);
+        }
+
+        let mut answers: Vec<DNSRecord> = Vec::new();
+        for _ in 0..header.num_answers {
+            let ans: DNSRecord;
+            (index, ans) = DNSRecord::parse(&buf, index);
+            answers.push(ans);
+        }
+
+        let mut authorities: Vec<DNSRecord> = Vec::new();
+        for _ in 0..header.num_authorities {
+            let auth: DNSRecord;
+            (index, auth) = DNSRecord::parse(&buf, index);
+            authorities.push(auth);
+        }
+
+        let mut additionals: Vec<DNSRecord> = Vec::new();
+        for _ in 0..header.num_additionals {
+            let adds: DNSRecord;
+            (index, adds) = DNSRecord::parse(&buf, index);
+            additionals.push(adds);
+        }
+
+        return DNSPacket {
+            header: header,
+            questions: questions,
+            answers: answers,
+            authorities: authorities,
+            additionals: additionals,
+        };
+    }
+}
+
+#[derive(Debug)]
 pub struct DNSRecord {
     pub name: String,
     pub type_: u16,

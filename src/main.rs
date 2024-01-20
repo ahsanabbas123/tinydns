@@ -1,5 +1,5 @@
 use std::net::{SocketAddr, UdpSocket};
-use tinydns::{build_query, DNSHeader, DNSQuestion, DNSRecord, TYPE_A};
+use tinydns::{build_query, DNSHeader, DNSPacket, DNSQuestion, DNSRecord, TYPE_A};
 
 fn main() {
     let query = build_query("www.example.com", TYPE_A);
@@ -31,6 +31,9 @@ fn main() {
             let record: DNSRecord;
             (_, record) = DNSRecord::parse(&buf, index);
             println!("Parsed record {:x?}", record);
+
+            let packet: DNSPacket = DNSPacket::parse(&buf);
+            println!("Parsed packet {:x?}", packet);
         }
         Err(e) => {
             eprintln!("Error in receiving response! {}", e);
