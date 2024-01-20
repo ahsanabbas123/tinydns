@@ -1,5 +1,5 @@
 use std::net::{SocketAddr, UdpSocket};
-use tinydns::{build_query, DNSHeader, DNSQuestion, TYPE_A};
+use tinydns::{build_query, DNSHeader, DNSQuestion, DNSRecord, TYPE_A};
 
 fn main() {
     let query = build_query("www.example.com", TYPE_A);
@@ -20,8 +20,17 @@ fn main() {
             println!("{} bytes received", bytes_recv);
             println!("Response Source Addr {}", src_addr);
             println!("Response Bytes {:x?}", &buf[..bytes_recv]);
+
+            let mut index: usize = 0;
             println!("Parsed Header {:x?}", DNSHeader::parse(&buf));
-            println!("Parsed Question {:x?}", DNSQuestion::parse(&buf));
+            index += 12;
+            let question: DNSQuestion;
+            (index, question) = DNSQuestion::parse(&buf, index);
+            println!("Parsed Question {:x?}", question);
+
+            let record: DNSRecord;
+            (_, record) = DNSRecord::parse(&buf, index);
+            println!("Parsed record {:x?}", record);
         }
         Err(e) => {
             eprintln!("Error in receiving response! {}", e);

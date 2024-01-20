@@ -63,9 +63,8 @@ impl DNSQuestion {
         return [name_bytes, type_bytes, class_bytes].concat();
     }
 
-    pub fn parse(buf: &[u8]) -> DNSQuestion {
+    pub fn parse(buf: &[u8], mut index: usize) -> (usize, DNSQuestion) {
         let mut parts: Vec<String> = Vec::new();
-        let mut index: usize = 12;
         let mut l: usize = buf[index].into();
         while l != 0 {
             index += 1;
@@ -76,20 +75,83 @@ impl DNSQuestion {
         }
         let name = parts.join(".");
         index += 1;
-        return DNSQuestion {
-            name: name,
-            type_: u16::from_be_bytes(buf[index..index + 2].try_into().unwrap()),
-            class_: u16::from_be_bytes(buf[index + 2..index + 4].try_into().unwrap()),
-        };
+        return (
+            index + 4,
+            DNSQuestion {
+                name: name,
+                type_: u16::from_be_bytes(buf[index..index + 2].try_into().unwrap()),
+                class_: u16::from_be_bytes(buf[index + 2..index + 4].try_into().unwrap()),
+            },
+        );
     }
 }
 
+#[derive(Debug)]
 pub struct DNSRecord {
     pub name: String,
     pub type_: u16,
     pub class_: u16,
-    pub ttl: u16,
+    pub ttl: u32,
     pub data: Vec<u8>,
+}
+
+impl DNSRecord {
+    pub fn parse(buf: &[u8], mut index: usize) -> (usize, DNSRecord) {
+        let name: String;
+        (index, name) = decode_dns_name(buf, index);
+        let type_: u16 = u16::from_be_bytes(buf[index..index + 2].try_into().unwrap());
+        let class_: u16 = u16::from_be_bytes(buf[index + 2..index + 4].try_into().unwrap());
+        let ttl: u32 = u32::from_be_bytes(buf[index + 4..index + 8].try_into().unwrap());
+
+        let data_len: u16 = u16::from_be_bytes(buf[index + 8..index + 10].try_into().unwrap());
+        index += 10;
+
+        let l: usize = data_len.into();
+        let data: Vec<u8> = buf[index..index + l].to_vec();
+        index += l;
+
+        return (
+            index,
+            DNSRecord {
+                name: name,
+                type_: type_,
+                class_: class_,
+                ttl: ttl,
+                data: data,
+            },
+        );
+    }
+}
+
+pub fn decode_dns_name(buf: &[u8], mut index: usize) -> (usize, String) {
+    let mut parts: Vec<String> = Vec::new();
+    let compression_bits: u8 = 0b1100_0000;
+    let mut l: u8 = buf[index];
+    index = index + 1;
+    while l != 0 {
+        if l & compression_bits != 0 {
+            let res: String;
+            (index, res) = decode_compressed_dns_name(buf, l, index);
+            parts.push(res);
+            break;
+        } else {
+            let len: usize = l.into();
+            parts.push(String::from_utf8((&buf[index..index + len]).to_vec()).unwrap());
+            index += len;
+        }
+        l = buf[index];
+        index = index + 1;
+    }
+    return (index, parts.join("."));
+}
+
+pub fn decode_compressed_dns_name(buf: &[u8], l: u8, mut index: usize) -> (usize, String) {
+    let mut top6bits: u8 = l & 0b0011_1111;
+    top6bits += buf[index];
+    index += 1;
+    let pointer: usize = top6bits.into();
+    let (_, res) = decode_dns_name(buf, pointer);
+    return (index, res);
 }
 
 pub fn encode_dns_name(domain_name: &str) -> String {
